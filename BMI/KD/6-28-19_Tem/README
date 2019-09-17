@@ -1,0 +1,125 @@
+July 30,2019
+
+EXPERIMENT DESCRIPTION:
+
+
+The purpose of this README file is to explain the experimental procedures of the kinesthetic pilot study performed for the Body-Machine Interface Study as well as any significant results. This pilot study required a subject to guide the Kinova JACO arm kinesthetically through 5 different ADL tasks. 5 trials were performed in succession for each task before moving on to the next one. At this point, data has only been collected from one subject.
+
+For all trials, the JACO always started from its home configuration. Force control was enabled throughout this experiment in order to allow the subject to backdrive the JACO.
+
+The five ADL tasks used for this experiment are as follows:
+
+	1) Pick and Place Red Cup onto Shelf
+
+	2) Open the Top Drawer
+
+	3) Close the Top Drawer
+
+	4) Pick and Place Red Cup to Simulate Drinking
+
+For task 4, the height of the cup when simulating drinking was approximated as the height required for a person sitting in a wheelchair.
+
+	5) Pick and Place Knife into Open Cabinet
+
+For task 5, no opening nor closing of the cabinet was required for completion of the task.
+
+
+The JPEG files in the "Pictures" folder show the environment and the configuration of the JACO at the start and end of the task. The files are labeled according to the naming convention shown below.
+
+	T#_SE.JPG
+
+	T# -> The task number. For example, if we are interested in the images for task 1, then T# will be T1.
+
+	SE -> Start or End. If we want to see the environment at the start of a trial, then SE will be SP (i.e. starting point). If we want to see the environment at the end of a trial, then SE will be EP (i.e. ending point).
+
+
+
+PREPROCESSING THE DATA:
+
+
+Each completed trial was recorded in its own bag file. Each bag file recorded data from the following topics:
+
+	/tf -> tracks transforms or coordinate frames over time
+
+	/j2s7s300_driver/out/tool_pose -> current Cartesian position
+
+	/j2s7s300_driver/out/joint_state -> joint names, position (rad), velocity (rad/s), and effort (Nm) information
+
+The bag files were separated by task, then fed into a MATLAB program. The program then read all the data from the bag files for each task. The program retrieved all of the end-effector poses by calculating the transform from the JACO base coordinate frame to the end-effector coordinate frame for each time step. 
+
+From these calculated transforms, the translation and rotation of the end effector were recorded in separate variables and saved as MAT files. The rotation data was recorded in quaternions, but later converted to Euler angles. As a reminder, the data from all trials for a given task was recorded in these MAT files.
+
+At this point, the data depicted the end-effector position and orientation, but we were interested in the velocity commands (changes in position and orientation) at each time step. 
+
+When considering the data for each trial, we looked at the difference between the current end-effector pose and the next to calculate the velocity command for each time step. We considered a velocity command to be issued if the difference between end-effector poses had a magnitude greater than 0.003 for any translation axis and 0.02 radians for any rotation axis. If these criteria were not met for a time step, then the end-effector was considered static for that time step. Time steps where the end-effector was considered static were disregarded.
+
+Furthermore, any velocity values greater than 1 were disregarded as artifacts when analyzing the data. There were less than 5 instances of a velocity value greater than one in all trials for rotation axes X and Z. These artifacts had values slightly larger than 6. Since the value, 2*Pi (~6.28) is no different than 0 for these axes, we believe these artifacts may be due to some misrepresentation of values by the JACO encoders. This is supported by the fact that a single time step is on the order of milliseconds, since the end effector never made a full revolution in such a short interval.
+
+A new 1x5 cell array for each task was used to represent the data matrix containing velocity command data for each trial. Each row of the matrix was a 6D velocity command where the first three columns were the translation X, Y and Z axes while the last three columns were the rotation X, Y and Z axes (roll, pitch and yaw).
+
+
+ANALYSIS:
+
+
+To analyze the distribution of velocity value for each axis, we combined the velocity command data from all trials into a single data matrix for each task. Then, we produced boxplots to represent the distribution of the command values issued to each axis during each task. 
+
+In Figure 1, we compare the boxplots of velocity command values between tasks for each axis. 
+
+In Figure 2, we compare the same boxplots between axes for each task. 
+
+Furthermore we compare all possible pairs of distributions using a one-way ANOVA test to see if any distributions have a common mean. Those distributions that have a significant difference in mean are connected by a line with stars just above it. The stars refer to the following:
+
+	One star -> p-value < 0.05
+
+	Two stars -> p-value < 0.01
+
+	Three stars -> p-value < 0.001
+
+After comparing the distribution of velocities, we wanted to analyze the data to see how often each axis was used in completing a task, given that a velocity command was issued (i.e. JACO not static for a time step).
+
+Each axis of each velocity command was checked to see if its magnitude was large enough (> 0.003 - translation, > 0.02 rad - rotation) to consider that axis "activated" during that time step. We counted the number of times each axis was activated for each trial given that a velocity command was issued. We then divided the number of times each axis was activated by the number of velocity commands (number of rows) for each trial to get the percentage of time each axis was activated (Activation Percentage) for each trial.
+
+Ultimately, each task had its own 5x6 matrix consisting of the activation percentages of the 6 different axes during all 5 trials of the task. From this data, we were able to calculate the means and standard deviations of the activation percentages of each axis during each task. Activation Percentage is essentially the proportion of time that the axis was used in completing the task.
+
+In Figure 3, we use a scatterplot to compare the activation percentages between tasks of each axis. 
+
+In Figure 4, another scatterplot is used to compare the activation percentages between axes of each task
+
+A red errorbar is laid over each point in the scatterplot. The range of the error bar is 2 standard deviations of the activation percentage of the axis for that task.
+
+Again, we compare all possible pairs of distributions of activation percentages using a one-way ANOVA test to see if the distributions have a common mean (although the sample size of each distribution is only 5). The same convention for displaying any significant differences in means is the same as mentioned above.
+
+In Figure 5, the activation percentage of each axis across tasks is depicted as a line graph
+
+
+CONCLUSIONS:
+
+
+1) Translation Axes tend to exhibit much lower velocity values than rotational axes. This may have something to do with the units of the translation axes (currently unknown), however it is difficult to draw conclusions when comparing the distributions of translation and rotation axes because of this difference in the orders of magnitude of their means. This is likely one cause of the frequent significant differences in means for pairs that consist of one translation axis and one rotation axis in Figure 2 (9  of 15 pairs).
+
+2) According to Figure 3, there seem to be more significant differences between tasks for the distributions of translation axes Y and Z. For these axes, tasks 1 and 4 are similar to each other, as are tasks 2 and 3. 
+
+However 1 and 4 are very different to 2 and 3. This also seems to be the case for rotation axes Y and Z. This makes sense when we consider that tasks 1 and 4 required the JACO to manipulate the same object (Red Cup) while 2 and 3 also manipulated the same object (the top drawer).
+
+Figure 3 also tells us that we must be more mindful of the tasks we choose for learning when starting with a translation axis (particularly Y and Z) as some tasks have a high utilization of an axis, while some may have virtually none.  
+
+3) Figure 4 informs us on what axes are most used when completing task. In the future, we could use this graph to determine which task to choose when we want to prioritize the learning of a particular axis. For example, if we wanted to prioritize learning translation axis Y over other axes, then task 3 would be ideal.
+
+4) Figure 5 shows how the use of axes varies with tasks. Some axes are generally more utilized than others. For example, the Rot X and Rot Z axes tend to have higher activation percentages than most axes for the majority of tasks. A graph like this could be used to inform our unlocking schedule. By observing how control dimensions are utilized across tasks, we can see which dimensions are more consistently used for ADL tasks as well as which axes are more suitable for certain tasks. It might even be possible to partition the control space into subsets according to tasks which tend to require the motion in the same or control dimensions.
+
+
+
+POSSIBLE ISSUES/FUTURE DIRECTIONS:
+
+
+There were many sources of bias present in this initial study. By completing trials in succession for a task, I introduced learning bias into the data, since one would expect performance to improve with repeated execution. I also started every trial of a task with the same environment configuration, so the data likely displayed more uniformity than if the positions of objects in the environment were randomized. This also holds for the JACO, since it started every trial from the home configuration. Finally, the workspace of the JACO during this study was much more restricted than the workspace the JACO would have if it were mounted to a wheelchair. 
+
+Also, the graphs representing the data, change drastically when the thresholds implemented in the data analysis-
+
+	0.003 -> translation
+
+	0.02 rad -> rotation
+
+are changed. These values were chosen to minimize the number of outliers in the boxplots, while ensuring that enough datapoints were included for axes to be considered activated. If the threshold was too high, the number of outliers would decrease, but the activation percentages of axes would be very small, and therefore misrepresented. These thresholds, may require more fine-tuning.
+
+In the future, more studies involving kinesthetic learning with the JACO will aim to overcome these issues.
